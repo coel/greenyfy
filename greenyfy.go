@@ -5,6 +5,7 @@ import (
     "fmt"
     "log"
     "net/http"
+    
     "image"
     "image/jpeg"
     _ "image/png"
@@ -16,25 +17,29 @@ import (
 )
 
 func init() {
-    http.HandleFunc("/me", me)
     http.HandleFunc("/", handler)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Because API")
-}
+    img_url := r.FormValue("me")
 
-func me(w http.ResponseWriter, r *http.Request) {
+    if len(img_url) == 0 {
+        fmt.Fprint(w, "Because API")
+        return
+    }
+    
     c := appengine.NewContext(r)
     client := urlfetch.Client(c)
-    resp, err := client.Get("http://images2.fanpop.com/image/photos/9200000/Pretty-Odd-pretty-odd-photography-9283045-1600-1200.jpg")
-    
+    resp, err := client.Get(img_url)
+
     if err != nil {
+        log.Println("Failed to get url: ", img_url)
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
     
     defer resp.Body.Close()
+    
     // fmt.Fprintf(w, "HTTP GET returned status %v", resp.Status)
     
     img, _, err := image.Decode(resp.Body)
@@ -48,7 +53,6 @@ func me(w http.ResponseWriter, r *http.Request) {
         log.Println("Resizing image", bnds.Max.X)
         img = resize.Resize(1024, 0, img, resize.Lanczos3)
     }
-    
     
     writeImage(w, &img)
 }
