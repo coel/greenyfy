@@ -9,6 +9,7 @@ import (
     "image"
     "image/jpeg"
     _ "image/png"
+    "image/draw"
     "strconv"
     "github.com/nfnt/resize"
     
@@ -54,7 +55,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
         img = resize.Resize(1024, 0, img, resize.Lanczos3)
     }
     
-    writeImage(w, &img)
+    bnds = img.Bounds()
+    
+    brd := beard(c)
+    //log.Println("beard: ", brd)
+    
+    sr := image.Rect(110,110,500,550)
+    dp := image.Point{10, 10}
+    rt := image.Rectangle{dp, dp.Add(sr.Size())}
+    m := image.NewRGBA(image.Rect(0, 0, bnds.Max.X, bnds.Max.Y))
+    
+    draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
+    draw.Draw(m, rt, brd, sr.Min, draw.Over)
+    
+    var img_out image.Image = m
+    
+    writeImage(w, &img_out)
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
@@ -70,4 +86,19 @@ func writeImage(w http.ResponseWriter, img *image.Image) {
     if _, err := w.Write(buffer.Bytes()); err != nil {
         log.Println("unable to write image.")
     }
+}
+
+func beard(c appengine.Context) image.Image {
+    client := urlfetch.Client(c)
+    resp, err := client.Get("http://localhost:8080/images/beard.png")
+
+    if err != nil {
+        log.Println("Failed to get beard url")
+    }
+    
+    defer resp.Body.Close()
+    
+    img, _, _ := image.Decode(resp.Body)
+    
+    return img
 }
