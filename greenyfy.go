@@ -7,7 +7,11 @@ import (
     "net/http"
     "image"
     "image/jpeg"
+    _ "image/png"
     "strconv"
+    
+    "appengine"
+    "appengine/urlfetch"
 )
 
 func init() {
@@ -20,14 +24,25 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func me(w http.ResponseWriter, r *http.Request) {
+    c := appengine.NewContext(r)
+    client := urlfetch.Client(c)
+    resp, err := client.Get("http://images2.fanpop.com/image/photos/9200000/Pretty-Odd-pretty-odd-photography-9283045-1600-1200.jpg")
     
-    resp, err := http.Get("http://golang.org/doc/gopher/frontpage.png")
-    if err != nil {
-        log.Fatal(err)
-    }
-    _, format, _ := image.Decode(resp.Body)
     defer resp.Body.Close()
-    fmt.Fprint(w, "me", format)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    
+    // fmt.Fprintf(w, "HTTP GET returned status %v", resp.Status)
+    
+    img, _, err := image.Decode(resp.Body)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    
+    writeImage(w, &img)
 }
 
 // writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
