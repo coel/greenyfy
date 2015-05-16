@@ -9,6 +9,7 @@ import (
     "image/jpeg"
     _ "image/png"
     "strconv"
+    "github.com/nfnt/resize"
     
     "appengine"
     "appengine/urlfetch"
@@ -41,6 +42,13 @@ func me(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
+    
+    bnds := img.Bounds()
+    if bnds.Max.X > 1024 {
+        log.Println("Resizing image", bnds.Max.X)
+        img = resize.Resize(1024, 0, img, resize.Lanczos3)
+    }
+    
     
     writeImage(w, &img)
 }
