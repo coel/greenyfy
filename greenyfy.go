@@ -17,10 +17,12 @@ import (
     
     "appengine"
     "appengine/urlfetch"
+	"appengine/memcache"
     
     "encoding/json"
 	
 	"code.google.com/p/graphics-go/graphics"
+	//"io"
 )
 
 func init() {
@@ -116,17 +118,44 @@ func writeImage(w http.ResponseWriter, img *image.Image) {
 }
 
 func beard(c appengine.Context) image.Image {
-    client := urlfetch.Client(c)
-    resp, err := client.Get("http://localhost:8080/images/beard.png")
-
-    if err != nil {
-        log.Println("Failed to get beard url")
-    }
-    
-    defer resp.Body.Close()
-    
-    img, _, _ := image.Decode(resp.Body)
-    
+	item, err := memcache.Get(c, "beard")
+	
+	// Get the item from the memcache
+	if err == memcache.ErrCacheMiss {
+	    c.Infof("item not in the cache")
+			
+	    client := urlfetch.Client(c)
+	    resp, err := client.Get("http://greenyfy.appspot.com/images/beard.png")
+	
+	    if err != nil {
+	        log.Println("Failed to get beard url")
+	    }
+	    
+	    defer resp.Body.Close()
+	    
+		buff := new(bytes.Buffer)
+		buff.ReadFrom(resp.Body)
+		
+		item := &memcache.Item{
+		    Key:   "beard",
+		    Value: buff.Bytes(),
+		}
+		
+		if err := memcache.Add(c, item); err == memcache.ErrNotStored {
+		    c.Infof("item with key %q already exists", item.Key)
+		} else if err != nil {
+		    c.Errorf("error adding item: %v", err)
+		}
+	} else if err != nil {
+	    c.Errorf("error getting item: %v", err)
+	}
+	
+	c.Infof("found beard in memcache")
+	
+	buff := bytes.NewReader(item.Value)
+	
+	img, _, _ := image.Decode(buff)
+	
     return img
 }
 
