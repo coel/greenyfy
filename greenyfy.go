@@ -38,91 +38,106 @@ func handler(w http.ResponseWriter, r *http.Request) {
     }
     
     c := appengine.NewContext(r)
-    client := urlfetch.Client(c)
-    resp, err := client.Get(img_url)
-
-    if err != nil {
-        log.Println("Failed to get url: ", img_url)
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    
-    defer resp.Body.Close()
-    
-    // fmt.Fprintf(w, "HTTP GET returned status %v", resp.Status)
-    
-    img, _, err := image.Decode(resp.Body)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    
-    bnds := img.Bounds()
-    if bnds.Dx() > 1024 {
-        log.Println("Resizing image", bnds.Dx())
-        img = resize.Resize(1024, 0, img, resize.Lanczos3)
-    }
-    
-	faces := findFaces(c, &img)
-	// todo: should I pass back by reference?
 	
-	log.Println("Obj: ", faces)
-		
-    bnds = img.Bounds()
-
-    m := image.NewRGBA(image.Rect(0, 0, bnds.Dx(), bnds.Dy()))
-    
-    draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
-    
-    brd := beard(c)
+	item, err := memcache.Get(c, img_url)
 	
-	for _, face := range faces {
+	if err == memcache.ErrCacheMiss {
+	    c.Infof("item not in the cache")
 		
-		brd_resized := resize.Resize(uint(face.Rectangle.Width*2), 0, brd, resize.Lanczos3)
-		brd_bnds := brd_resized.Bounds()
-		
-		vert := (face.Landmarks.MouthLeft.Y + face.Landmarks.MouthRight.Y) /2 - float32(brd_bnds.Dy()) * 0.5
-
-		rb := image.NewRGBA(image.Rect(0, 0, brd_bnds.Dx(), brd_bnds.Dy()))
-    
-		rad := float64(face.Attributes.Pose.Roll)*math.Pi/180
-    	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
-
-		mid := face.Rectangle.Left + face.Rectangle.Width / 2 // face.Landmarks.NoseTip.X
-		lt := mid - (float32(brd_bnds.Dx()) / 2) // + float32(t)
-	    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
-	    dp := image.Point{int(float64(lt)), int(float64(vert))}
-	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
-
-		draw.Draw(m, rt, rb, sr.Min, draw.Over)
-	} 
+	    client := urlfetch.Client(c)
+	    resp, err := client.Get(img_url)
 	
-    
-    img_out := image.Image(m)
-    
-    writeImage(w, &img_out)
-}
+	    if err != nil {
+	        log.Println("Failed to get url: ", img_url)
+	        http.Error(w, err.Error(), http.StatusInternalServerError)
+	        return
+	    }
+	    
+	    defer resp.Body.Close()
+	    
+	    // fmt.Fprintf(w, "HTTP GET returned status %v", resp.Status)
+	    
+	    img, _, err := image.Decode(resp.Body)
+	    if err != nil {
+	        http.Error(w, err.Error(), http.StatusInternalServerError)
+	        return
+	    }
+	    
+	    bnds := img.Bounds()
+	    if bnds.Dx() > 1024 {
+	        log.Println("Resizing image", bnds.Dx())
+	        img = resize.Resize(1024, 0, img, resize.Lanczos3)
+	    }
+	    
+		faces := findFaces(c, &img)
+		// todo: should I pass back by reference?
+		
+		log.Println("Obj: ", faces)
+			
+	    bnds = img.Bounds()
+	
+	    m := image.NewRGBA(image.Rect(0, 0, bnds.Dx(), bnds.Dy()))
+	    
+	    draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
+	    
+	    brd := beard(c)
+		log.Println("----")
+		for _, face := range faces {
+			
+			brd_resized := resize.Resize(uint(face.Rectangle.Width*2), 0, brd, resize.Lanczos3)
+			brd_bnds := brd_resized.Bounds()
+			
+			vert := (face.Landmarks.MouthLeft.Y + face.Landmarks.MouthRight.Y) /2 - float32(brd_bnds.Dy()) * 0.5
+	
+			rb := image.NewRGBA(image.Rect(0, 0, brd_bnds.Dx(), brd_bnds.Dy()))
+	    
+			rad := float64(face.Attributes.Pose.Roll)*math.Pi/180
+	    	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
+	
+			mid := face.Rectangle.Left + face.Rectangle.Width / 2 // face.Landmarks.NoseTip.X
+			lt := mid - (float32(brd_bnds.Dx()) / 2) // + float32(t)
+		    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
+		    dp := image.Point{int(float64(lt)), int(float64(vert))}
+		    rt := image.Rectangle{dp, dp.Add(sr.Size())}
+	
+			draw.Draw(m, rt, rb, sr.Min, draw.Over)
+		} 
+	log.Println("***")
+	    img_out := image.Image(m)
+	    
+	    buffer := new(bytes.Buffer)
+	    if err := jpeg.Encode(buffer, img_out, nil); err != nil {
+	        log.Println("unable to encode image.")
+	    }
 
-func writeImage(w http.ResponseWriter, img *image.Image) {
-
-    buffer := new(bytes.Buffer)
-    if err := jpeg.Encode(buffer, *img, nil); err != nil {
-        log.Println("unable to encode image.")
-    }
+		item = &memcache.Item{
+		    Key:   img_url,
+		    Value: buffer.Bytes(),
+		}
+		
+		if err := memcache.Add(c, item); err == memcache.ErrNotStored {
+		    c.Infof("item with key %q already exists", item.Key)
+		} else if err != nil {
+		    c.Errorf("error adding item: %v", err)
+		}
+	} else if err != nil {
+	    c.Errorf("error getting item: %v", err)
+	} else {
+		log.Println("Cache hit: ", img_url)
+	}
 
     w.Header().Set("Content-Type", "image/jpeg")
-    w.Header().Set("Content-Length", strconv.Itoa(len(buffer.Bytes())))
-    if _, err := w.Write(buffer.Bytes()); err != nil {
+    w.Header().Set("Content-Length", strconv.Itoa(len(item.Value)))
+    if _, err := w.Write(item.Value); err != nil {
         log.Println("unable to write image.")
-    }
+    }	
 }
 
 func beard(c appengine.Context) image.Image {
 	item, err := memcache.Get(c, "beard")
 	
-	// Get the item from the memcache
 	if err == memcache.ErrCacheMiss {
-	    c.Infof("item not in the cache")
+	    c.Infof("beard not in the cache")
 			
 	    client := urlfetch.Client(c)
 	    resp, err := client.Get("http://greenyfy.appspot.com/images/beard.png")
@@ -136,7 +151,7 @@ func beard(c appengine.Context) image.Image {
 		buff := new(bytes.Buffer)
 		buff.ReadFrom(resp.Body)
 		
-		item := &memcache.Item{
+		item = &memcache.Item{
 		    Key:   "beard",
 		    Value: buff.Bytes(),
 		}
@@ -148,6 +163,8 @@ func beard(c appengine.Context) image.Image {
 		}
 	} else if err != nil {
 	    c.Errorf("error getting item: %v", err)
+	} else {
+		log.Println("Cache hit beard")
 	}
 	
 	c.Infof("found beard in memcache")
