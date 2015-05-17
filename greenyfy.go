@@ -61,29 +61,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	// todo: should I pass back by reference?
 	
 	log.Println("Obj: ", faces)
-	
-	first := faces[0]
-
-	log.Println("Pupil: ", first.Landmarks.PupilLeft)
-
-	vert := int((first.Landmarks.NoseTip.Y + first.Landmarks.UpperLipTop.Y) / 2)
-	
-	
+		
     bnds = img.Bounds()
-    
-    brd := beard(c)
-    //log.Println("beard: ", brd) 
-	
-    brd = resize.Resize(uint(first.Rectangle.Width), 0, brd, resize.Lanczos3)
-	brd_bnds := brd.Bounds()
-	
-    sr := image.Rect(0,0,brd_bnds.Dx(),brd_bnds.Dy())
-    dp := image.Point{int(first.Rectangle.Left), vert}
-    rt := image.Rectangle{dp, dp.Add(sr.Size())}
+
     m := image.NewRGBA(image.Rect(0, 0, bnds.Dx(), bnds.Dy()))
     
     draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
-    draw.Draw(m, rt, brd, sr.Min, draw.Over)
+    
+    brd := beard(c)
+	
+	for _, face := range faces {
+		
+		vert := int((face.Landmarks.NoseTip.Y + face.Landmarks.NoseTip.Y + face.Landmarks.UpperLipTop.Y) / 3)
+	    brd_resized := resize.Resize(uint(face.Rectangle.Width), 0, brd, resize.Lanczos3)
+		brd_bnds := brd_resized.Bounds()
+		
+	    sr := image.Rect(0,0,brd_bnds.Dx(),brd_bnds.Dy())
+	    dp := image.Point{int(face.Rectangle.Left), vert}
+	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
+	
+	    draw.Draw(m, rt, brd_resized, sr.Min, draw.Over)
+	} 
+	
     
     img_out := image.Image(m)
     
