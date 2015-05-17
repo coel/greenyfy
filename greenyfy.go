@@ -52,22 +52,35 @@ func handler(w http.ResponseWriter, r *http.Request) {
     }
     
     bnds := img.Bounds()
-    if bnds.Max.X > 1024 {
-        log.Println("Resizing image", bnds.Max.X)
+    if bnds.Dx() > 1024 {
+        log.Println("Resizing image", bnds.Dx())
         img = resize.Resize(1024, 0, img, resize.Lanczos3)
     }
     
-	findFaces(c, &img)
+	faces := findFaces(c, &img)
+	// todo: should I pass back by reference?
+	
+	log.Println("Obj: ", faces)
+	
+	first := faces[0]
+
+	log.Println("Pupil: ", first.Landmarks.PupilLeft)
+
+	vert := int((first.Landmarks.NoseTip.Y + first.Landmarks.UpperLipTop.Y) / 2)
+	
 	
     bnds = img.Bounds()
     
     brd := beard(c)
-    //log.Println("beard: ", brd)
-    
-    sr := image.Rect(110,110,500,550)
-    dp := image.Point{10, 10}
+    //log.Println("beard: ", brd) 
+	
+    brd = resize.Resize(uint(first.Rectangle.Width), 0, brd, resize.Lanczos3)
+	brd_bnds := brd.Bounds()
+	
+    sr := image.Rect(0,0,brd_bnds.Dx(),brd_bnds.Dy())
+    dp := image.Point{int(first.Rectangle.Left), vert}
     rt := image.Rectangle{dp, dp.Add(sr.Size())}
-    m := image.NewRGBA(image.Rect(0, 0, bnds.Max.X, bnds.Max.Y))
+    m := image.NewRGBA(image.Rect(0, 0, bnds.Dx(), bnds.Dy()))
     
     draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
     draw.Draw(m, rt, brd, sr.Min, draw.Over)
@@ -107,7 +120,7 @@ func beard(c appengine.Context) image.Image {
     return img
 }
 
-func findFaces(c appengine.Context, img *image.Image) {
+func findFaces(c appengine.Context, img *image.Image) []Face {
     client := urlfetch.Client(c)
     endpoint := "https://api.projectoxford.ai/face/v0/detections?analyzesFaceLandmarks=true&analyzesHeadPose=true"
     bodyType := "application/octet-stream"
@@ -131,9 +144,8 @@ func findFaces(c appengine.Context, img *image.Image) {
 	obj := make([]Face, 1)
 	dec := json.NewDecoder(resp.Body)
 	dec.Decode(&obj)
-	
-	log.Println("Obj: ", obj)
-	log.Println("Pupil: ", obj[0].Landmarks.PupilLeft)
+		
+	return obj
 }
 
 type Face struct {
