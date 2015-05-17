@@ -11,8 +11,6 @@ import (
     "image/jpeg"
     _ "image/png"
     "image/draw"
-	//"golang.org/x/image/draw"
-	//"golang.org/x/image/math/f64"
 
     "strconv"
     "github.com/nfnt/resize"
@@ -82,24 +80,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		brd_bnds := brd_resized.Bounds()
 		
 		vert := (face.Landmarks.MouthLeft.Y + face.Landmarks.MouthRight.Y) /2 - float32(brd_bnds.Dy()) * 0.5
-		//vert := (face.Landmarks.NoseTip.Y + face.Landmarks.UpperLipTop.Y) / 2 - float32(brd_bnds.Dy()) * 0.1
-	
-		//draw.Draw(m, rt, brd_resized, sr.Min, draw.Over)
 
-//draw.Draw(m, m.Bounds(), img2, image.Point{-200,-200}, draw.Src)
 		rb := image.NewRGBA(image.Rect(0, 0, brd_bnds.Dx(), brd_bnds.Dy()))
     
 		rad := float64(face.Attributes.Pose.Roll)*math.Pi/180
     	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
 
-		t := math.Tan(rad) * float64(brd_bnds.Dy()) / 2
-		c := (math.Sin(rad) * float64(brd_bnds.Dy())) / 2
-		s := math.Sin(rad) * float64(brd_bnds.Dx()) / 2
-
-		log.Println("Offset: ", t)
-		log.Println("Offsets: ", s)
-		log.Println("Offsetc: ", c)
-		
 		mid := face.Rectangle.Left + face.Rectangle.Width / 2 // face.Landmarks.NoseTip.X
 		lt := mid - (float32(brd_bnds.Dx()) / 2) // + float32(t)
 	    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
@@ -107,10 +93,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
 
 		draw.Draw(m, rt, rb, sr.Min, draw.Over)
-
-		//matrix := f64.Aff3{1, -0.2, 0, 1, 0, 0}
-	    //draw.NearestNeighbor.Transform(m, &matrix, brd_resized, rt, draw.Over, nil)
-
 	} 
 	
     
@@ -119,7 +101,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
     writeImage(w, &img_out)
 }
 
-// writeImage encodes an image 'img' in jpeg format and writes it into ResponseWriter.
 func writeImage(w http.ResponseWriter, img *image.Image) {
 
     buffer := new(bytes.Buffer)
@@ -235,12 +216,3 @@ type HeadPose struct {
 	Roll float32
 	Yaw float32
 }
-/*
-    "attributes": {
-        "headPose": {
-            "pitch": 0.0,
-            "roll": -4.7,
-            "yaw": -1.5
-        }
-    }
-*/
