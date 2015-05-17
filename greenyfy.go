@@ -78,10 +78,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	
 	for _, face := range faces {
 		
-		vert := int((face.Landmarks.NoseTip.Y + face.Landmarks.NoseTip.Y + face.Landmarks.UpperLipTop.Y) / 3)
-	    brd_resized := resize.Resize(uint(face.Rectangle.Width), 0, brd, resize.Lanczos3)
+		brd_resized := resize.Resize(uint(face.Rectangle.Width*2), 0, brd, resize.Lanczos3)
 		brd_bnds := brd_resized.Bounds()
 		
+		vert := (face.Landmarks.MouthLeft.Y + face.Landmarks.MouthRight.Y) /2 - float32(brd_bnds.Dy()) * 0.5
+		//vert := (face.Landmarks.NoseTip.Y + face.Landmarks.UpperLipTop.Y) / 2 - float32(brd_bnds.Dy()) * 0.1
 	
 		//draw.Draw(m, rt, brd_resized, sr.Min, draw.Over)
 
@@ -92,11 +93,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
     	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
 
 		t := math.Tan(rad) * float64(brd_bnds.Dy()) / 2
+		c := (math.Sin(rad) * float64(brd_bnds.Dy())) / 2
+		s := math.Sin(rad) * float64(brd_bnds.Dx()) / 2
 
 		log.Println("Offset: ", t)
-
+		log.Println("Offsets: ", s)
+		log.Println("Offsetc: ", c)
+		
+		mid := face.Rectangle.Left + face.Rectangle.Width / 2 // face.Landmarks.NoseTip.X
+		lt := mid - (float32(brd_bnds.Dx()) / 2) // + float32(t)
 	    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
-	    dp := image.Point{int(face.Rectangle.Left) - int(t), vert}
+	    dp := image.Point{int(float64(lt)), int(float64(vert))}
 	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
 
 		draw.Draw(m, rt, rb, sr.Min, draw.Over)
