@@ -5,11 +5,15 @@ import (
     "fmt"
     "log"
     "net/http"
+	"math"
     
     "image"
     "image/jpeg"
     _ "image/png"
     "image/draw"
+	//"golang.org/x/image/draw"
+	//"golang.org/x/image/math/f64"
+
     "strconv"
     "github.com/nfnt/resize"
     
@@ -17,6 +21,8 @@ import (
     "appengine/urlfetch"
     
     "encoding/json"
+	
+	"code.google.com/p/graphics-go/graphics"
 )
 
 func init() {
@@ -76,11 +82,28 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	    brd_resized := resize.Resize(uint(face.Rectangle.Width), 0, brd, resize.Lanczos3)
 		brd_bnds := brd_resized.Bounds()
 		
-	    sr := image.Rect(0,0,brd_bnds.Dx(),brd_bnds.Dy())
-	    dp := image.Point{int(face.Rectangle.Left), vert}
-	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
 	
-	    draw.Draw(m, rt, brd_resized, sr.Min, draw.Over)
+		//draw.Draw(m, rt, brd_resized, sr.Min, draw.Over)
+
+//draw.Draw(m, m.Bounds(), img2, image.Point{-200,-200}, draw.Src)
+		rb := image.NewRGBA(image.Rect(0, 0, brd_bnds.Dx(), brd_bnds.Dy()))
+    
+		rad := float64(face.Attributes.Pose.Roll)*math.Pi/180
+    	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
+
+		t := math.Tan(rad) * float64(brd_bnds.Dy()) / 2
+
+		log.Println("Offset: ", t)
+
+	    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
+	    dp := image.Point{int(face.Rectangle.Left) - int(t), vert}
+	    rt := image.Rectangle{dp, dp.Add(sr.Size())}
+
+		draw.Draw(m, rt, rb, sr.Min, draw.Over)
+
+		//matrix := f64.Aff3{1, -0.2, 0, 1, 0, 0}
+	    //draw.NearestNeighbor.Transform(m, &matrix, brd_resized, rt, draw.Over, nil)
+
 	} 
 	
     
