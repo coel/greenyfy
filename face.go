@@ -13,32 +13,42 @@ import (
     "encoding/json"
 )
 
-func findFaces(c appengine.Context, img *image.Image) []Face {
+func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
     client := urlfetch.Client(c)
     endpoint := config.FaceApiUrl + "?analyzesFaceLandmarks=true&analyzesHeadPose=true"
     bodyType := "application/octet-stream"
     
     buffer := new(bytes.Buffer)
     if err := jpeg.Encode(buffer, *img, nil); err != nil {
-        c.Infof("unable to encode image.")
+        return nil, err
     }
     
     req, err := http.NewRequest("POST", endpoint, buffer)
+	
+    if err != nil {
+        return nil, err
+    }
+
     req.Header.Add("Content-Type", bodyType)
     req.Header.Add("Ocp-Apim-Subscription-Key", config.FaceApiKey)
+	
     resp, err := client.Do(req)
 
     if err != nil {
-        c.Infof("Failed to get beard url")
+        return nil, err
     }
     	
     defer resp.Body.Close()
 
-	obj := make([]Face, 1)
+	var obj []Face
 	dec := json.NewDecoder(resp.Body)
-	dec.Decode(&obj)
+	err = dec.Decode(&obj)
+	
+	if err != nil {
+        return nil, err
+    }
 		
-	return obj
+	return obj, nil
 }
 
 type Face struct {
