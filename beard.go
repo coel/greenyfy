@@ -15,10 +15,14 @@ var beardCacheKey = "beard"
 
 
 
-func getBeard(c appengine.Context) (image.Image, error) {
+func getBeardCached(c appengine.Context) (image.Image, error) {
 	
 	item, err := getCached(c, beardCacheKey, getBeardFromUrl)
-		
+	
+	if err != nil {
+	    return nil, err
+	}
+			
 	buff := bytes.NewReader(item.Value)
 	
 	img, _, err := image.Decode(buff)
@@ -32,7 +36,7 @@ func getBeard(c appengine.Context) (image.Image, error) {
 
 func getBeardFromUrl (c appengine.Context, key string) (*bytes.Buffer, error) {
     client := urlfetch.Client(c)
-    resp, err := client.Get(config.BeardUrl)
+    resp, err := client.Get("http://" + appengine.DefaultVersionHostname(c) + "/images/beard.png")
 
     if err != nil {
         return nil, err

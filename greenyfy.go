@@ -2,7 +2,6 @@ package greenyfy
 
 import (
     "bytes"
-    "fmt"
     "net/http"
 	"math"
     
@@ -28,11 +27,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
     img_url := r.FormValue("me")
 
     if len(img_url) == 0 {
-        fmt.Fprint(w, "Because API")
+		http.Redirect(w, r, "/index.html", 307)
         return
     }
     
     c := appengine.NewContext(r)
+	
+	c.Infof("Host: %v", appengine.DefaultVersionHostname(c))
 	
 	item, err := getCached(c, img_url, do)
 	
@@ -44,7 +45,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "image/jpeg")
     w.Header().Set("Content-Length", strconv.Itoa(len(item.Value)))
     if _, err := w.Write(item.Value); err != nil {
-        c.Infof("unable to write image.")
         http.Error(w, err.Error(), http.StatusInternalServerError)
     }	
 }
@@ -60,7 +60,7 @@ func do (c appengine.Context, key string) (*bytes.Buffer, error) {
     
     defer resp.Body.Close()
     
-    // fmt.Fprintf(w, "HTTP GET returned status %v", resp.Status)
+    c.Infof("HTTP GET returned status %v", resp.Status)
     
     img, _, err := image.Decode(resp.Body)
     if err != nil {
@@ -79,7 +79,7 @@ func do (c appengine.Context, key string) (*bytes.Buffer, error) {
         return nil, err
     }
 	
-	c.Infof("Obj: ", faces)
+	//c.Infof("Obj: ", faces)
 		
     bnds = img.Bounds()
 
@@ -87,7 +87,7 @@ func do (c appengine.Context, key string) (*bytes.Buffer, error) {
     
     draw.Draw(m, bnds, img, image.Point{0,0}, draw.Src)
     
-    brd, err := getBeard(c)
+    brd, err := getBeardCached(c)
 	if (err != nil) {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func do (c appengine.Context, key string) (*bytes.Buffer, error) {
 		rad := float64(face.Attributes.Pose.Roll)*math.Pi/180
     	graphics.Rotate(rb, brd_resized, &graphics.RotateOptions{rad})
 
-		mid := face.Rectangle.Left + face.Rectangle.Width / 2 // face.Landmarks.NoseTip.X
-		lt := mid - (float32(brd_bnds.Dx()) / 2) // + float32(t)
+		mid := face.Rectangle.Left + face.Rectangle.Width / 2
+		lt := mid - (float32(brd_bnds.Dx()) / 2)
 	    sr := image.Rect(0,0,brd_bnds.Dx()*4,brd_bnds.Dy()*4)
 	    dp := image.Point{int(float64(lt)), int(float64(vert))}
 	    rt := image.Rectangle{dp, dp.Add(sr.Size())}

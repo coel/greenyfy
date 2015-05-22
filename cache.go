@@ -11,9 +11,13 @@ func getCached(c appengine.Context, key string, missing func(appengine.Context, 
 	item, err := memcache.Get(c, key)
 	
 	if err == memcache.ErrCacheMiss {
-	    c.Infof("item not in the cache: ", key)
+	    c.Infof("item not in the cache: %v", key)
 		
-		result, _ := missing(c, key)
+		result, err := missing(c, key)
+		
+		if err != nil {
+			return nil, err
+		}
 		
 		item = &memcache.Item{
 		    Key:   key,
@@ -28,7 +32,7 @@ func getCached(c appengine.Context, key string, missing func(appengine.Context, 
 	} else if err != nil {
 	    return item, err
 	} else {
-		c.Infof("Cache hit: ", key)
+		c.Infof("Cache hit: %v", key)
 	}
 	
 	return item, nil
