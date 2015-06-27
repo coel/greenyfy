@@ -13,8 +13,6 @@ import (
 
 var beardCacheKey = "beard"
 
-
-
 func getBeardCached(c appengine.Context) (image.Image, error) {
 	
 	item, err := getCached(c, beardCacheKey, getBeardFromUrl)
