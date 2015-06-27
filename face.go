@@ -11,6 +11,7 @@ import (
     "appengine/urlfetch"
     
     "encoding/json"
+    "errors"
 )
 
 func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
@@ -39,6 +40,11 @@ func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
     }
     	
     defer resp.Body.Close()
+    
+    if resp.StatusCode != 200 {
+        c.Errorf("Failed to access FaceAPI, return code: %v", resp.Status)
+        return nil, errors.New("Could not access API")
+    }
 
 	var obj []Face
 	dec := json.NewDecoder(resp.Body)
