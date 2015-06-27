@@ -12,7 +12,7 @@ Built to run on Google App Engine.  The Google App Engine SDK for Go is required
 
 Facial recognition is done via Microsoft Project Oxford Face API, sign up at: [http://www.projectoxford.ai/face](http://www.projectoxford.ai/face)
 
-To run, you need to set FaceAPIKey to config.go with an API key from Microsoft after signing up above.
+To run, you need to set FaceAPIKey in config.go with an API key from Microsoft after signing up above.
 
 Running
 -------
