@@ -7,9 +7,9 @@ handlers:
 - url: /images
   static_dir: images
 
-- url: /index\.html
+- url: /
   static_files: html/index.html
-  upload: /index.html
+  upload: html/index\.html
 
 - url: /.*
   script: _go_app
