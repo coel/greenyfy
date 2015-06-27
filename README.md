@@ -1,7 +1,7 @@
 Greenyfy
 ========
 
-Provide an image url and have beards added to all the people.
+Provide an image url and have beards added to all the people.  Running at: [http://greenyfy.appspot.com/](http://greenyfy.appspot.com/)
 
 Inspired by mustachify.me and one man's epic beard.
 
