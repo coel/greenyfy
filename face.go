@@ -25,20 +25,20 @@ func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
     }
     
     req, err := http.NewRequest("POST", endpoint, buffer)
-	
+    
     if err != nil {
         return nil, err
     }
 
     req.Header.Add("Content-Type", bodyType)
     req.Header.Add("Ocp-Apim-Subscription-Key", config.FaceApiKey)
-	
+    
     resp, err := client.Do(req)
 
     if err != nil {
         return nil, err
     }
-    	
+        
     defer resp.Body.Close()
     
     if resp.StatusCode != 200 {
@@ -46,27 +46,27 @@ func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
         return nil, errors.New("Could not access API")
     }
 
-	var obj []Face
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&obj)
-	
-	if err != nil {
+    var obj []Face
+    dec := json.NewDecoder(resp.Body)
+    err = dec.Decode(&obj)
+    
+    if err != nil {
         return nil, err
     }
-		
-	return obj, nil
+        
+    return obj, nil
 }
 
 type Face struct {
     Id   string `json:"faceId"`
-	Rectangle FaceRectangle `json:"faceRectangle"`
+    Rectangle FaceRectangle `json:"faceRectangle"`
     Landmarks FaceLandmarks `json:"faceLandmarks"`
-	Attributes FaceAttributes
+    Attributes FaceAttributes
 }
 
 type FaceLandmarks struct {
-	PupilLeft Point
-	PupilRight Point
+    PupilLeft Point
+    PupilRight Point
     NoseTip Point
     MouthLeft Point
     MouthRight Point
@@ -95,23 +95,23 @@ type FaceLandmarks struct {
 }
 
 type Point struct {
-	X float32
-	Y float32
+    X float32
+    Y float32
 }
 
 type FaceRectangle struct {
-	Top float32
-	Left float32
-	Width float32
-	Height float32
+    Top float32
+    Left float32
+    Width float32
+    Height float32
 }
 
 type FaceAttributes struct {
-	Pose HeadPose `json:"headPose"`
+    Pose HeadPose `json:"headPose"`
 }
 
 type HeadPose struct {
-	Pitch float32
-	Roll float32
-	Yaw float32
+    Pitch float32
+    Roll float32
+    Yaw float32
 }
