@@ -27,7 +27,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
     img_url := r.FormValue("me")
 
     if len(img_url) == 0 {
-        http.Redirect(w, r, "/", 307)
+        http.Redirect(w, r, "/index.html", 307)
         return
     }
     
