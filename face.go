@@ -16,7 +16,7 @@ import (
 
 func findFaces(c appengine.Context, img *image.Image) ([]Face, error) {
     client := urlfetch.Client(c)
-    endpoint := config.FaceApiUrl + "?analyzesFaceLandmarks=true&analyzesHeadPose=true"
+    endpoint := config.FaceApiUrl + "?returnFaceLandmarks=true&returnFaceAttributes=headPose"
     bodyType := "application/octet-stream"
     
     buffer := new(bytes.Buffer)
